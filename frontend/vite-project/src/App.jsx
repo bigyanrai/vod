@@ -6,7 +6,7 @@ import videojs from "video.js";
 function App() {
   const playerRef = useRef(null);
   const videoLink =
-    "http://localhost:8000/uploads/courses/72e76c74-2550-4c1d-8cd8-cabe516d1648/index.m3u8";
+    "http://localhost:8000/uploads/courses/1f0a52f4-5eca-4f0a-b8ff-b0969c10c875/index.m3u8";
 
   const handlePlayerReady = (player) => {
     playerRef.current = player;
