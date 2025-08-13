@@ -6,7 +6,7 @@ import videojs from "video.js";
 function App() {
   const playerRef = useRef(null);
   const videoLink =
-    "http://localhost:8000/uploads/courses/1f0a52f4-5eca-4f0a-b8ff-b0969c10c875/index.m3u8";
+    "https://nninesolution.ddns.net/nnine-bucket/courses/8693f03b-e21a-4ef9-b9b7-9593b0ef9bcd/index.m3u8";
 
   const handlePlayerReady = (player) => {
     playerRef.current = player;
