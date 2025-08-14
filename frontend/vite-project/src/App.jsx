@@ -5,24 +5,32 @@ import videojs from "video.js";
 
 function App() {
   const playerRef = useRef(null);
+
+  // Use your MinIO direct URL
   const videoLink =
-    "http://localhost:8000/uploads/courses/1f0a52f4-5eca-4f0a-b8ff-b0969c10c875/index.m3u8";
+    "http://nninesolution.ddns.net/nnine-bucket/courses/59820685-35ae-4dac-a9e7-09f9ea7c64ca/master.m3u8";
 
   const handlePlayerReady = (player) => {
     playerRef.current = player;
 
-    // You can handle player events here, for example:
     player.on("waiting", () => {
       videojs.log("player is waiting");
+    });
+
+    player.on("error", () => {
+      videojs.log("error happened:", player.error());
     });
 
     player.on("dispose", () => {
       videojs.log("player will dispose");
     });
   };
+
   const videoPlayerOptions = {
-    autoplay: true,
+    autoplay: false,
     controls: true,
+    preload: "auto",
+    fluid: true,
     sources: [
       {
         src: videoLink,
@@ -34,11 +42,7 @@ function App() {
   return (
     <div>
       <h1>Video Player</h1>
-      <VideoPlayer
-        ref={playerRef}
-        options={videoPlayerOptions}
-        onReady={handlePlayerReady}
-      />
+      <VideoPlayer options={videoPlayerOptions} onReady={handlePlayerReady} />
     </div>
   );
 }
