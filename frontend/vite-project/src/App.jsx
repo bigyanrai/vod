@@ -8,7 +8,7 @@ function App() {
 
   // Use your MinIO direct URL
   const videoLink =
-    "http://nninesolution.ddns.net/nnine-bucket/courses/59820685-35ae-4dac-a9e7-09f9ea7c64ca/master.m3u8";
+    "https://nninesolution.ddns.net:9000/nnine-bucket/courses/b6d28343-cdf9-4f90-8b98-6969073cab1f/index.m3u8";
 
   const handlePlayerReady = (player) => {
     playerRef.current = player;
