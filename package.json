@@ -19,7 +19,8 @@
     "ioredis": "^5.7.0",
     "minio": "^8.0.5",
     "multer": "^2.0.2",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "videojs-http-source-selector": "^1.1.6"
   },
   "devDependencies": {
     "supervisor": "^0.12.0"
