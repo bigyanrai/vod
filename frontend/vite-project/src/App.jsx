@@ -54,7 +54,7 @@ import HlsVideoPlayer from "./VideoPlayer";
 
 function App() {
   const videoUrl =
-    "https://nninesolution.ddns.net/nnine-bucket/courses/6822089b-ea61-49f2-bb96-097c42fbf755/master.m3u8";
+    "https://nninesolution.ddns.net/nnine-bucket/courses/9b7bd745-7081-4cf2-a650-2e9fd2e72749/master.m3u8";
 
   return (
     <div>
