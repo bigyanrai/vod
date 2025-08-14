@@ -1,51 +1,148 @@
-import React from "react";
+// import React, { useEffect, useRef } from "react";
+// import videojs from "video.js";
+// import "video.js/dist/video-js.css";
+
+// const VideoPlayer = ({ src }) => {
+//   const videoRef = useRef(null);
+//   const playerRef = useRef(null);
+
+//   useEffect(() => {
+//     if (!playerRef.current) {
+//       playerRef.current = videojs(videoRef.current, {
+//         controls: true,
+//         fluid: true,
+//         preload: "auto",
+//       });
+
+//       // HLS support for non-Safari browsers
+//       if (videoRef.current.canPlayType("application/vnd.apple.mpegurl")) {
+//         playerRef.current.src({ src, type: "application/vnd.apple.mpegurl" });
+//       } else {
+//         // Hls.js fallback
+//         import("hls.js").then((HlsModule) => {
+//           const Hls = HlsModule.default;
+//           if (Hls.isSupported()) {
+//             const hls = new Hls();
+//             hls.loadSource(src);
+//             hls.attachMedia(videoRef.current);
+//           }
+//         });
+//       }
+//     }
+
+//     return () => {
+//       if (playerRef.current) {
+//         playerRef.current.dispose();
+//       }
+//     };
+//   }, [src]);
+
+//   return (
+//     <div>
+//       <video ref={videoRef} className="video-js vjs-big-play-centered" />
+//     </div>
+//   );
+// };
+
+// export default VideoPlayer;
+
+// import React, { useEffect, useRef } from "react";
+// import videojs from "video.js";
+// import "video.js/dist/video-js.css";
+
+// const VideoPlayer = ({ src }) => {
+//   const videoRef = useRef(null);
+//   const playerRef = useRef(null);
+
+//   useEffect(() => {
+//     if (!playerRef.current) {
+//       // Initialize Video.js
+//       playerRef.current = videojs(videoRef.current, {
+//         autoplay: false,
+//         controls: true,
+//         responsive: true,
+//         fluid: true,
+//         sources: [
+//           {
+//             src,
+//             type: "application/x-mpegURL", // HLS format
+//           },
+//         ],
+//       });
+//     } else {
+//       // Update source if src changes
+//       playerRef.current.src({ src, type: "application/x-mpegURL" });
+//     }
+
+//     return () => {
+//       if (playerRef.current) {
+//         playerRef.current.dispose();
+//         playerRef.current = null;
+//       }
+//     };
+//   }, [src]);
+
+//   return (
+//     <div>
+//       <div data-vjs-player>
+//         <video
+//           ref={videoRef}
+//           className="video-js vjs-big-play-centered"
+//         ></video>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default VideoPlayer;
+
+import React, { useEffect, useRef } from "react";
 import videojs from "video.js";
 import "video.js/dist/video-js.css";
 
-export const VideoPlayer = (props) => {
-  const videoRef = React.useRef(null);
-  const playerRef = React.useRef(null);
-  const { options, onReady } = props;
+const VideoPlayer = ({ src }) => {
+  const videoRef = useRef(null);
+  const playerRef = useRef(null);
 
-  React.useEffect(() => {
-    // Make sure Video.js player is only initialized once
-    if (!playerRef.current) {
-      // The Video.js player needs to be _inside_ the component el for React 18 Strict Mode.
-      const videoElement = document.createElement("video-js");
+  useEffect(() => {
+    const initializePlayer = () => {
+      if (videoRef.current && !playerRef.current) {
+        playerRef.current = videojs(videoRef.current, {
+          autoplay: false,
+          controls: true,
+          responsive: true,
+          fluid: true,
+          sources: [
+            {
+              src,
+              type: "application/x-mpegURL",
+            },
+          ],
+        });
+      } else if (playerRef.current) {
+        playerRef.current.src({ src, type: "application/x-mpegURL" });
+      }
+    };
 
-      videoElement.classList.add("vjs-big-play-centered");
-      videoRef.current.appendChild(videoElement);
-
-      const player = (playerRef.current = videojs(videoElement, options, () => {
-        videojs.log("player is ready");
-        onReady && onReady(player);
-      }));
-
-      // You could update an existing player in the `else` block here
-      // on prop change, for example:
-    } else {
-      const player = playerRef.current;
-
-      player.autoplay(options.autoplay);
-      player.src(options.sources);
-    }
-  }, [options, videoRef]);
-
-  // Dispose the Video.js player when the functional component unmounts
-  React.useEffect(() => {
-    const player = playerRef.current;
+    // Use requestAnimationFrame to ensure the element is in the DOM
+    const frame = requestAnimationFrame(initializePlayer);
 
     return () => {
-      if (player && !player.isDisposed()) {
-        player.dispose();
+      cancelAnimationFrame(frame);
+      if (playerRef.current) {
+        playerRef.current.dispose();
         playerRef.current = null;
       }
     };
-  }, [playerRef]);
+  }, [src]);
 
   return (
     <div data-vjs-player>
-      <div ref={videoRef} />
+      <video
+        ref={videoRef}
+        className="video-js vjs-big-play-centered"
+        playsInline
+      />
     </div>
   );
 };
