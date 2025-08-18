@@ -388,6 +388,21 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   });
 });
 
+app.get("/api/courses/:lessonId/progress", async (req, res) => {
+  const { lessonId } = req.params;
+  try {
+    const jobs = await agenda.jobs({ "data.lessonId": lessonId });
+    if (jobs.length === 0) return res.json({ progress: 0, stage: "pending" });
+
+    const job = jobs[0];
+    const { progress = 0, stage = "pending" } = job.attrs.data || {};
+    res.json({ progress, stage });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch progress" });
+  }
+});
+
 // Start server
 app.listen(8000, async () => {
   await agenda.start(); // Start Agenda inside server so jobs can run
