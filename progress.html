@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Course Upload Progress</title>
+  <style>
+    #progressContainer {
+      width: 100%;
+      background: #eee;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+    #progressBar {
+      height: 24px;
+      width: 0;
+      background: #4caf50;
+      text-align: center;
+      color: white;
+      line-height: 24px;
+      transition: width 0.3s;
+    }
+  </style>
+</head>
+<body>
+  <h2>Course Upload Progress</h2>
+  <div id="progressContainer">
+    <div id="progressBar">0%</div>
+  </div>
+  <p>Stage: <span id="stageLabel">pending</span></p>
+
+  <script>
+    const lessonId = "YOUR_LESSON_ID_HERE"; // Replace dynamically
+
+    async function fetchProgress() {
+      try {
+        const res = await fetch(`/api/courses/${lessonId}/progress`);
+        const data = await res.json();
+        const bar = document.getElementById("progressBar");
+        const stageLabel = document.getElementById("stageLabel");
+
+        bar.style.width = data.progress + "%";
+        bar.textContent = Math.round(data.progress) + "%";
+        stageLabel.textContent = data.stage;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Poll every 2 seconds
+    setInterval(fetchProgress, 2000);
+    fetchProgress(); // initial call
+  </script>
+</body>
+</html>
