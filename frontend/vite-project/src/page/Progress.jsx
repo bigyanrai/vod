@@ -7,14 +7,15 @@ const stages = [
   { key: "cleanup", label: "Cleaning local files" },
 ];
 
-console.log("test")
-
 const CourseUploadProgress = () => {
   const [videoFile, setVideoFile] = useState(null);
   const [lessonId, setLessonId] = useState(null);
   const [progress, setProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState("pending");
   const [uploading, setUploading] = useState(false);
+
+  // Track last progress to prevent backward jumps
+  const [lastProgress, setLastProgress] = useState(0);
 
   // Handle file selection
   const handleFileChange = (e) => {
@@ -37,6 +38,9 @@ const CourseUploadProgress = () => {
       console.log(data);
       if (data.lessonId) {
         setLessonId(data.lessonId);
+        setProgress(0);
+        setLastProgress(0);
+        setCurrentStage("transcoding");
       } else {
         alert("Upload failed");
       }
@@ -55,7 +59,13 @@ const CourseUploadProgress = () => {
       try {
         const res = await fetch(`http://localhost:8000/api/courses/${lessonId}/progress`);
         const data = await res.json();
-        setProgress(data.progress || 0);
+        const newProgress = data.progress || 0;
+
+        // Ensure progress never decreases
+        const safeProgress = Math.max(newProgress, lastProgress);
+        setProgress(safeProgress);
+        setLastProgress(safeProgress);
+
         setCurrentStage(data.stage || "pending");
       } catch (err) {
         console.error("Failed to fetch progress:", err);
@@ -65,14 +75,18 @@ const CourseUploadProgress = () => {
     const interval = setInterval(fetchProgress, 2000);
     fetchProgress(); // initial call
     return () => clearInterval(interval);
-  }, [lessonId]);
+  }, [lessonId, lastProgress]);
 
   return (
     <div style={{ maxWidth: "500px", margin: "20px auto", fontFamily: "sans-serif" }}>
       <h2>Upload Video & Track Progress</h2>
 
       <input type="file" accept="video/*" onChange={handleFileChange} />
-      <button onClick={handleUpload} disabled={uploading || !videoFile} style={{ marginLeft: "10px" }}>
+      <button
+        onClick={handleUpload}
+        disabled={uploading || !videoFile}
+        style={{ marginLeft: "10px" }}
+      >
         {uploading ? "Uploading..." : "Upload"}
       </button>
 
@@ -105,9 +119,14 @@ const CourseUploadProgress = () => {
           <ul style={{ listStyle: "none", padding: 0 }}>
             {stages.map((stage) => {
               const done =
-                progress >= 100 || (stage.key === "cleanup" && progress >= 90) || currentStage === stage.key;
+                progress >= 100 ||
+                (stage.key === "cleanup" && progress >= 90) ||
+                currentStage === stage.key;
               return (
-                <li key={stage.key} style={{ marginBottom: "10px", display: "flex", alignItems: "center" }}>
+                <li
+                  key={stage.key}
+                  style={{ marginBottom: "10px", display: "flex", alignItems: "center" }}
+                >
                   <span
                     style={{
                       display: "inline-block",

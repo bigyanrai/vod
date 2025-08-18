@@ -70,14 +70,15 @@ agenda.define("transcode-video", { concurrency: 1, lockLifetime: 1000 * 60 * 60 
   fs.mkdirSync(outputPath, { recursive: true });
 
   console.log(`🎬 Starting video processing for lesson: ${lessonId}`);
-
   let currentRenditionIndex = 0;
 
-  const updateProgress = async (progress, stage) => {
-    job.attrs.data.progress = progress;
+  // Updated progress function to prevent backward jumps
+  const updateProgress = async (percent, stage) => {
+    const safePercent = Math.max(job.attrs.data.progress || 0, percent);
+    job.attrs.data.progress = safePercent;
     job.attrs.data.stage = stage;
     await job.save();
-    console.log(`📊 Progress updated: ${progress.toFixed(2)}%, Stage: ${stage}`);
+    console.log(`📊 Progress updated: ${safePercent.toFixed(2)}%, Stage: ${stage}`);
   };
 
   await updateProgress(0, "transcoding");
@@ -120,7 +121,6 @@ agenda.define("transcode-video", { concurrency: 1, lockLifetime: 1000 * 60 * 60 
     });
   }
 
-  // Master playlist
   console.log("📃 Creating master playlist...");
   const masterPlaylist = renditions
     .map((r) => `#EXT-X-STREAM-INF:BANDWIDTH=${parseInt(r.videoBitrate) * 1024},RESOLUTION=${r.resolution}\n${r.name}/index.m3u8`)
@@ -128,7 +128,6 @@ agenda.define("transcode-video", { concurrency: 1, lockLifetime: 1000 * 60 * 60 
   fs.writeFileSync(path.join(outputPath, "master.m3u8"), "#EXTM3U\n" + masterPlaylist);
   console.log("✅ Master playlist created");
 
-  // Upload to MinIO
   console.log("⬆ Uploading all files to MinIO...");
   await updateProgress(60, "uploading");
   await uploadFolderToMinIO(outputPath, `courses/${lessonId}`, async ({ uploaded, total }) => {
@@ -137,7 +136,6 @@ agenda.define("transcode-video", { concurrency: 1, lockLifetime: 1000 * 60 * 60 
   });
   console.log("✅ All files uploaded to MinIO");
 
-  // Cleanup
   console.log("🧹 Cleaning up local files...");
   await updateProgress(90, "cleanup");
   fs.rmSync(outputPath, { recursive: true, force: true });
