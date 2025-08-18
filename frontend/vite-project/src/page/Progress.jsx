@@ -12,17 +12,14 @@ const CourseUploadProgress = () => {
   const [lessonId, setLessonId] = useState(null);
   const [progress, setProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState("pending");
+  const [currentRendition, setCurrentRendition] = useState("");
   const [uploading, setUploading] = useState(false);
-
-  // Track last progress to prevent backward jumps
   const [lastProgress, setLastProgress] = useState(0);
 
-  // Handle file selection
   const handleFileChange = (e) => {
     setVideoFile(e.target.files[0]);
   };
 
-  // Handle file upload
   const handleUpload = async () => {
     if (!videoFile) return;
     const formData = new FormData();
@@ -35,7 +32,6 @@ const CourseUploadProgress = () => {
         body: formData,
       });
       const data = await res.json();
-      console.log(data);
       if (data.lessonId) {
         setLessonId(data.lessonId);
         setProgress(0);
@@ -51,7 +47,6 @@ const CourseUploadProgress = () => {
     }
   };
 
-  // Poll progress if lessonId is available
   useEffect(() => {
     if (!lessonId) return;
 
@@ -61,12 +56,13 @@ const CourseUploadProgress = () => {
         const data = await res.json();
         const newProgress = data.progress || 0;
 
-        // Ensure progress never decreases
+        // Prevent backward progress
         const safeProgress = Math.max(newProgress, lastProgress);
         setProgress(safeProgress);
         setLastProgress(safeProgress);
 
         setCurrentStage(data.stage || "pending");
+        setCurrentRendition(data.rendition || "");
       } catch (err) {
         console.error("Failed to fetch progress:", err);
       }
@@ -115,6 +111,10 @@ const CourseUploadProgress = () => {
               {Math.round(progress)}%
             </div>
           </div>
+
+          <h4>
+            Stage: {currentStage} {currentStage === "transcoding" && currentRendition && `(${currentRendition})`}
+          </h4>
 
           <ul style={{ listStyle: "none", padding: 0 }}>
             {stages.map((stage) => {

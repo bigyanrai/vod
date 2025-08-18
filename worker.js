@@ -6,7 +6,6 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { Client as MinioClient } from "minio";
-import mongoose from "mongoose";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +22,6 @@ const minioClient = new MinioClient({
 });
 const bucketName = "nnine-bucket";
 
-// Ensure bucket exists
 async function ensureBucket() {
   console.log("📦 Checking MinIO bucket...");
   const exists = await minioClient.bucketExists(bucketName).catch(() => false);
@@ -35,7 +33,6 @@ async function ensureBucket() {
 }
 await ensureBucket();
 
-// Upload folder with full logging
 async function uploadFolderToMinIO(localDir, remoteDir, onProgress) {
   const files = fs.readdirSync(localDir);
   const totalFiles = files.length;
@@ -49,10 +46,8 @@ async function uploadFolderToMinIO(localDir, remoteDir, onProgress) {
     if (stat.isDirectory()) {
       await uploadFolderToMinIO(localFile, path.join(remoteDir, file), onProgress);
     } else {
-      console.log(`⬆ Uploading file to MinIO: ${remoteFile}`);
       await minioClient.fPutObject(bucketName, remoteFile, localFile);
       uploadedFiles++;
-      console.log(`✅ Uploaded ${file} (${uploadedFiles}/${totalFiles})`);
       if (onProgress) onProgress({ uploaded: uploadedFiles, total: totalFiles });
     }
   }
@@ -69,26 +64,26 @@ agenda.define("transcode-video", { concurrency: 1, lockLifetime: 1000 * 60 * 60 
   const outputPath = path.resolve(__dirname, "uploads", "courses", lessonId);
   fs.mkdirSync(outputPath, { recursive: true });
 
-  console.log(`🎬 Starting video processing for lesson: ${lessonId}`);
-  let currentRenditionIndex = 0;
+  let currentProgress = 0;
 
-  // Updated progress function to prevent backward jumps
   const updateProgress = async (percent, stage) => {
     const safePercent = Math.max(job.attrs.data.progress || 0, percent);
     job.attrs.data.progress = safePercent;
     job.attrs.data.stage = stage;
     await job.save();
+    currentProgress = safePercent;
     console.log(`📊 Progress updated: ${safePercent.toFixed(2)}%, Stage: ${stage}`);
   };
 
-  await updateProgress(0, "transcoding");
+  // Transcoding each rendition
+  const perRenditionProgress = 60 / renditions.length;
 
-  for (const rendition of renditions) {
+  for (let i = 0; i < renditions.length; i++) {
+    const rendition = renditions[i];
     const dir = path.join(outputPath, rendition.name);
     fs.mkdirSync(dir, { recursive: true });
     const hlsPath = path.join(dir, "index.m3u8");
 
-    console.log(`🎥 Transcoding rendition: ${rendition.name}`);
     await new Promise((resolve, reject) => {
       ffmpeg(filePath)
         .setFfmpegPath(ffmpegInstaller.path)
@@ -103,44 +98,32 @@ agenda.define("transcode-video", { concurrency: 1, lockLifetime: 1000 * 60 * 60 
           `-hls_segment_filename ${path.join(dir, "segment%03d.ts")}`,
         ])
         .on("progress", async (prog) => {
-          const percent = prog && prog.percent ? ((currentRenditionIndex + prog.percent / 100) / renditions.length) * 60 : 0;
+          const percent = i * perRenditionProgress + ((prog.percent || 0) / 100) * perRenditionProgress;
           await updateProgress(percent, "transcoding");
-          process.stdout.write(`\r⏳ Transcoding progress: ${percent.toFixed(2)}%`);
         })
-        .on("end", () => {
-          console.log(`✅ Rendition ${rendition.name} done`);
-          currentRenditionIndex++;
-          resolve();
-        })
-        .on("error", (err) => {
-          console.error(`❌ Error transcoding ${rendition.name}:`, err);
-          reject(err);
-        })
+        .on("end", resolve)
+        .on("error", reject)
         .output(hlsPath)
         .run();
     });
   }
 
-  console.log("📃 Creating master playlist...");
+  // Master playlist
   const masterPlaylist = renditions
     .map((r) => `#EXT-X-STREAM-INF:BANDWIDTH=${parseInt(r.videoBitrate) * 1024},RESOLUTION=${r.resolution}\n${r.name}/index.m3u8`)
     .join("\n");
   fs.writeFileSync(path.join(outputPath, "master.m3u8"), "#EXTM3U\n" + masterPlaylist);
-  console.log("✅ Master playlist created");
 
-  console.log("⬆ Uploading all files to MinIO...");
-  await updateProgress(60, "uploading");
+  // Upload
   await uploadFolderToMinIO(outputPath, `courses/${lessonId}`, async ({ uploaded, total }) => {
     const percent = 60 + (uploaded / total) * 30;
     await updateProgress(percent, "uploading");
   });
-  console.log("✅ All files uploaded to MinIO");
 
-  console.log("🧹 Cleaning up local files...");
+  // Cleanup
   await updateProgress(90, "cleanup");
   fs.rmSync(outputPath, { recursive: true, force: true });
   fs.rmSync(filePath, { force: true });
-  console.log("✅ Local files removed");
 
   await updateProgress(100, "done");
   console.log(`🎉 Lesson ${lessonId} processing completed!`);
